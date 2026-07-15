@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Parrot head, facing right. Bold shapes so it reads at 16px. -->
+  <defs>
+    <clipPath id="head"><circle cx="58" cy="68" r="46"/></clipPath>
+  </defs>
+  <!-- crest: three rounded feathers -->
+  <path d="M56 30 C 48 18, 30 22, 32 36 C 40 30, 50 30, 56 30 Z" fill="#0e9f6e"/>
+  <path d="M60 26 C 58 10, 42 8, 40 20 C 50 18, 56 22, 60 26 Z" fill="#12ad74"/>
+  <path d="M62 28 C 66 12, 84 12, 84 26 C 76 22, 68 24, 62 28 Z" fill="#0e9f6e"/>
+  <!-- head -->
+  <circle cx="58" cy="68" r="46" fill="#17b877"/>
+  <!-- soft top-right sheen: big offset circle clipped to head -->
+  <circle cx="74" cy="44" r="44" fill="#2bd18e" clip-path="url(#head)" opacity="0.55"/>
+  <!-- beak: upper hook + tucked lower mandible -->
+  <path d="M92 46 C 116 44, 126 62, 118 78 C 112 90, 98 94, 88 88 C 98 78, 100 62, 92 46 Z" fill="#f6a01a"/>
+  <path d="M90 86 C 98 92, 108 90, 114 82 C 112 94, 96 100, 86 92 Z" fill="#d97706"/>
+  <!-- eye ring + eye -->
+  <circle cx="64" cy="56" r="17" fill="#ffffff"/>
+  <circle cx="68" cy="58" r="8.5" fill="#1b1b1d"/>
+  <circle cx="71" cy="55" r="3" fill="#ffffff"/>
+</svg>
