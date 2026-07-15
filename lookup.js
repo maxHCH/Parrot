@@ -85,11 +85,16 @@
 
     speak(text, null); // 先用 TTS 唸一次，字典音檔回來後按鈕會改用真人發音
 
-    chrome.runtime.sendMessage({ type: "lookup", text, context }, (res) => {
-      if (!pop) return;
-      if (chrome.runtime.lastError || !res) return fill(`<span class="wl-err">查詢失敗</span>`);
-      render(res, context);
-    });
+    try {
+      chrome.runtime.sendMessage({ type: "lookup", text, context }, (res) => {
+        if (!pop) return;
+        if (chrome.runtime.lastError || !res) return fill(`<span class="wl-err">查詢失敗</span>`);
+        render(res, context);
+      });
+    } catch (_) {
+      // 擴充功能重新載入後的孤兒 script：提示重新整理即可
+      fill(`<span class="wl-err">擴充功能已更新，請重新整理此頁</span>`);
+    }
   }
 
   // 從上下文抓出包含該字的句子，當沒有 AI 例句時的備援
@@ -175,6 +180,7 @@
         saveBtn.disabled = true;
         saveBtn.textContent = "加入中…";
         // fetch 一律在 background（CORS），這裡只發 message
+        try {
         chrome.runtime.sendMessage(
           {
             type: "save",
@@ -199,12 +205,29 @@
             }
           }
         );
+        } catch (_) {
+          saveBtn.textContent = "擴充功能已更新，請重新整理此頁";
+        }
       };
   }
+
+  // ---------- 觸發條件 ----------
+  // 預設只在練習模式（AB LOOP 面板開著）才啟用選字查詢，
+  // 免得平常瀏覽的雙擊也彈卡。options 可開「全站查詢」。
+  let everywhere = false;
+  try {
+    chrome.storage.local.get("lookupEverywhere", (v) => (everywhere = !!v?.lookupEverywhere));
+    chrome.storage.onChanged.addListener((ch) => {
+      if (ch.lookupEverywhere) everywhere = !!ch.lookupEverywhere.newValue;
+    });
+  } catch (_) {}
+
+  const lookupActive = () => everywhere || !!document.getElementById("ytab-panel");
 
   // ---------- 觸發 ----------
   document.addEventListener("mouseup", (e) => {
     if (e.target.closest?.("#wl-pop")) return;
+    if (!lookupActive()) return;
 
     setTimeout(() => {
       const sel = window.getSelection();

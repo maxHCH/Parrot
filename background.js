@@ -69,6 +69,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     gateBeginSession(true).then(() => sendResponse({ ok: true }));
     return true;
   }
+  if (msg?.type === "quest-today") {
+    questToday().then(sendResponse);
+    return true;
+  }
   if (msg?.type === "sb-login") {
     sbLogin(msg.email, msg.password).then(sendResponse);
     return true;
@@ -287,10 +291,90 @@ async function flushEvents() {
     const sent = new Set(evQueue.map((e) => e.client_event_id));
     const { evQueue: now = [] } = await chrome.storage.local.get("evQueue");
     await chrome.storage.local.set({ evQueue: now.filter((e) => !sent.has(e.client_event_id)) });
+
+    await questAfterFlush(token); // 升級 / 成就偵測
   } catch (e) {
     console.warn("[parrot] flush:", e);
   } finally {
     flushing = false;
+  }
+}
+
+// popup 的今日 XP。local_date 是 Asia/Taipei，不能用 toISOString（UTC）算日期
+async function questToday() {
+  const token = await sbToken();
+  if (!token) return { loggedIn: false };
+  try {
+    const d = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/v_daily_summary?local_date=eq.${d}&select=xp`,
+      { headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` } }
+    );
+    const rows = r.ok ? await r.json() : [];
+    return { loggedIn: true, xp: rows[0]?.xp || 0 };
+  } catch (_) {
+    return { loggedIn: true, xp: null };
+  }
+}
+
+// ---- Language Quest：升級 / 成就偵測 → 通知頁面放動畫 ----
+
+async function sbRpc(name, token) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      apikey: SUPABASE_KEY,
+      authorization: `Bearer ${token}`,
+    },
+    body: "{}",
+  });
+  if (!r.ok) throw new Error(`${name}: ${r.status}`);
+  return r.json();
+}
+
+async function questAfterFlush(token) {
+  try {
+    const [stats] = await sbRpc("my_stats", token);
+    const newCodes = await sbRpc("sync_achievements", token); // 回傳「這次新解鎖的」codes
+
+    const { questLevel } = await chrome.storage.local.get("questLevel");
+    await chrome.storage.local.set({ questLevel: stats.level });
+
+    // 第一次同步只記錄基準，不慶祝
+    const levelUp = questLevel != null && stats.level > questLevel ? stats.level : null;
+
+    let achievements = [];
+    if (newCodes?.length) {
+      const defs = await fetch(
+        `${SUPABASE_URL}/rest/v1/achievement_defs?select=code,title&code=in.(${newCodes.join(",")})`,
+        { headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` } }
+      ).then((r) => (r.ok ? r.json() : []));
+      achievements = newCodes.map((c) => defs.find((d) => d.code === c)?.title || c);
+    }
+
+    if (!levelUp && !achievements.length) return;
+
+    // 優先在 YouTube 分頁上放頁內動畫；沒有就退回系統通知
+    const payload = { type: "quest-celebrate", level: levelUp, achievements };
+    const tabs = await chrome.tabs.query({ url: "https://www.youtube.com/*" });
+    let delivered = false;
+    for (const t of tabs) {
+      try {
+        await chrome.tabs.sendMessage(t.id, payload);
+        delivered = true;
+      } catch (_) {}
+    }
+    if (!delivered) {
+      chrome.notifications.create(`quest-${Date.now()}`, {
+        type: "basic",
+        iconUrl: "icon128.png",
+        title: levelUp ? `升級！LV ${levelUp} 🦜` : "成就解鎖！",
+        message: achievements.length ? achievements.join("、") : "繼續保持！",
+      });
+    }
+  } catch (e) {
+    console.warn("[parrot] quest:", e);
   }
 }
 

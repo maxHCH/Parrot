@@ -144,6 +144,16 @@ async function refresh() {
 setInterval(refresh, 1000);
 refresh();
 
+// ---- 今日 XP（Language Quest，登入才顯示）----
+chrome.runtime.sendMessage({ type: "quest-today" }, (res) => {
+  if (chrome.runtime.lastError || !res?.loggedIn || res.xp == null) return;
+  const GOAL = 60; // 熱力圖的中間門檻
+  document.getElementById("quest-xp").textContent = res.xp;
+  document.getElementById("quest-fill").style.width =
+    `${Math.min(100, (res.xp / GOAL) * 100)}%`;
+  document.getElementById("quest-wrap").classList.remove("hidden");
+});
+
 startBtn.addEventListener("click", () => {
   startBtn.disabled = true;
   startBtn.textContent = "開啟中...";

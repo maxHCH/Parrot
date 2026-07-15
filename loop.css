@@ -5,6 +5,7 @@
   --ytab-line: rgba(255, 255, 255, 0.16);
   --ytab-accent: #3ea6ff;
 
+  position: relative; /* XP toast 的定位基準 */
   margin: 12px 0 16px;
   padding: 10px 12px;
   border: 1px solid var(--ytab-line);
@@ -275,4 +276,86 @@
 #ytab-panel .ytab-close:hover {
   background: rgba(255, 255, 255, 0.12);
   color: var(--ytab-fg);
+}
+
+/* ── Language Quest 回饋 ── */
+
+.ytab-xp-toast {
+  position: absolute; /* 相對 #ytab-panel，浮在面板內的右上 */
+  top: 42px;
+  z-index: 100;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(15, 25, 35, 0.92);
+  color: #facc15;
+  font: 700 15px/1.4 -apple-system, "Noto Sans TC", sans-serif;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  animation: ytab-xp-float 1.4s ease-out forwards;
+}
+@keyframes ytab-xp-float {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.8); }
+  15%  { opacity: 1; transform: translateY(0) scale(1.05); }
+  30%  { transform: translateY(-4px) scale(1); }
+  100% { opacity: 0; transform: translateY(-46px) scale(0.95); }
+}
+
+.ytab-celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: ytab-cel-fade 4.2s ease forwards;
+  cursor: pointer;
+}
+@keyframes ytab-cel-fade {
+  0% { opacity: 0; } 6% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0; }
+}
+
+.ytab-confetti {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation: ytab-confetti-fall linear forwards;
+}
+@keyframes ytab-confetti-fall {
+  0%   { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(105vh) rotate(720deg); }
+}
+
+.ytab-celebrate-card {
+  background: #0f1923;
+  color: #e8eaf0;
+  border-radius: 18px;
+  padding: 26px 40px;
+  text-align: center;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  font-family: -apple-system, "Noto Sans TC", sans-serif;
+  animation: ytab-cel-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes ytab-cel-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.ytab-celebrate-lv {
+  font-size: 44px;
+  font-weight: 800;
+  color: #facc15;
+  letter-spacing: 1px;
+}
+.ytab-celebrate-title { font-size: 18px; margin-top: 4px; }
+.ytab-celebrate-ach {
+  font-size: 16px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(246, 160, 26, 0.12);
+  color: #f6a01a;
 }

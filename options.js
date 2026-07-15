@@ -11,6 +11,11 @@ document.getElementById("save").onclick = () => {
   });
 };
 
+const lookupEverywhere = document.getElementById("lookup-everywhere");
+chrome.storage.local.get("lookupEverywhere", (v) => (lookupEverywhere.checked = !!v.lookupEverywhere));
+lookupEverywhere.onchange = () =>
+  chrome.storage.local.set({ lookupEverywhere: lookupEverywhere.checked });
+
 // ---- Supabase 登入（Language Quest 記分用）----
 const form = document.getElementById("login-form");
 const done = document.getElementById("login-done");

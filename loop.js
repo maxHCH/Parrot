@@ -36,8 +36,34 @@
     window.postMessage({ __ytab: true, dir: "content", type, payload }, location.origin);
 
   // ---------- 儲存 ----------
-  const get = (key) => new Promise((r) => chrome.storage.local.get(key, (v) => r(v[key])));
-  const set = (key, value) => chrome.storage.local.set({ [key]: value });
+  // 重新載入擴充功能後，舊分頁的 content script 會變孤兒：
+  // chrome.* 一呼叫就丟 "Extension context invalidated"。偵測到就整個停機。
+  let ctxDead = false;
+  const alive = () => {
+    if (ctxDead) return false;
+    try {
+      if (chrome.runtime?.id) return true;
+    } catch (_) {}
+    ctxDead = true;
+    document.getElementById(PANEL_ID)?.remove();
+    return false;
+  };
+
+  const get = (key) =>
+    new Promise((r) => {
+      if (!alive()) return r(undefined);
+      try {
+        chrome.storage.local.get(key, (v) => r(v?.[key]));
+      } catch (_) {
+        r(undefined);
+      }
+    });
+  const set = (key, value) => {
+    if (!alive()) return;
+    try {
+      chrome.storage.local.set({ [key]: value });
+    } catch (_) {}
+  };
 
   const saveAB = () => {
     if (!videoId) return;
@@ -59,7 +85,66 @@
         durationSec: state.b - state.a,
       });
     } catch (_) {}
+    if (questOn) showXpToast("+5 🍪");
   };
+
+  // ---------- Language Quest 回饋 ----------
+  // 有登入才顯示 XP toast，不然數字是假的
+  let questOn = false;
+  chrome.storage.local.get("sbSession", (v) => (questOn = !!v.sbSession));
+  chrome.storage.onChanged.addListener((ch) => {
+    if (ch.sbSession) questOn = !!ch.sbSession.newValue;
+  });
+
+  function showXpToast(text) {
+    if (!panel) return; // 掛在面板內；面板沒開就不顯示
+    const el = document.createElement("div");
+    el.className = "ytab-xp-toast";
+    el.textContent = text;
+    el.style.right = `${16 + Math.random() * 24}px`; // 連續好幾輪時稍微錯開
+    panel.appendChild(el);
+    setTimeout(() => el.remove(), 1400);
+  }
+
+  // 升級 / 成就解鎖：全螢幕 confetti + 卡片（background flush 後推過來）
+  function showCelebration({ level, achievements }) {
+    document.querySelector(".ytab-celebrate")?.remove();
+    const ov = document.createElement("div");
+    ov.className = "ytab-celebrate";
+
+    for (let i = 0; i < 48; i++) {
+      const c = document.createElement("span");
+      c.className = "ytab-confetti";
+      c.style.left = `${Math.random() * 100}%`;
+      c.style.background = ["#17b877", "#f6a01a", "#3ea6ff", "#f472b6", "#facc15"][i % 5];
+      c.style.animationDelay = `${Math.random() * 0.6}s`;
+      c.style.animationDuration = `${1.6 + Math.random() * 1.2}s`;
+      ov.appendChild(c);
+    }
+
+    const card = document.createElement("div");
+    card.className = "ytab-celebrate-card";
+    if (level) {
+      const lv = document.createElement("div");
+      lv.className = "ytab-celebrate-lv";
+      lv.textContent = `LV ${level}`;
+      const t = document.createElement("div");
+      t.className = "ytab-celebrate-title";
+      t.textContent = "升級了！🦜";
+      card.append(lv, t);
+    }
+    for (const a of achievements || []) {
+      const row = document.createElement("div");
+      row.className = "ytab-celebrate-ach";
+      row.textContent = `🏅 ${a}`;
+      card.appendChild(row);
+    }
+    ov.appendChild(card);
+
+    ov.addEventListener("click", () => ov.remove());
+    document.body.appendChild(ov);
+    setTimeout(() => ov.remove(), 4200);
+  }
 
   // ---------- 字幕解析 ----------
   function parseCaptions(text) {
@@ -146,6 +231,7 @@
 
   // ---------- 循環引擎 ----------
   function tick() {
+    if (ctxDead) return; // 孤兒 script：停掉 rAF 鏈
     requestAnimationFrame(tick);
     if (!enabled || !video || !panel) return;
 
@@ -309,12 +395,30 @@
       if (currentVideoId()) toggleEnabled();
       sendResponse({ on: enabled });
     }
+    if (msg?.type === "quest-celebrate") {
+      showCelebration(msg); // 面板沒開也照放——升級是升級
+      sendResponse({ shown: true });
+    }
   });
 
   // ---------- 事件 ----------
+  let pendingPlay = null;
+
   function onClick(e) {
     const item = e.target.closest(".ytab-item");
-    if (item) return playSentence(Number(item.dataset.i));
+    if (item) {
+      // 雙擊／拖曳是在選字查詢，不能跳句打斷正在循環的區段：
+      // 延遲一拍再跳，期間出現第二擊或文字選取就取消。
+      clearTimeout(pendingPlay);
+      if (e.detail > 1) return; // 雙擊的第二下 → 交給選字查詢
+      const i = Number(item.dataset.i);
+      pendingPlay = setTimeout(() => {
+        const sel = window.getSelection();
+        if (sel && !sel.isCollapsed) return; // 有選取 → 使用者在選字
+        playSentence(i);
+      }, 300);
+      return;
+    }
 
     const btn = e.target.closest("button");
     if (!btn || !video) return;
@@ -529,7 +633,10 @@
 
   document.addEventListener("keydown", onKey, true);
   document.addEventListener("yt-navigate-finish", init);
-  setInterval(init, 1000);
+  const initTimer = setInterval(() => {
+    if (!alive()) return clearInterval(initTimer);
+    init();
+  }, 1000);
   init();
   requestAnimationFrame(tick);
 })();
