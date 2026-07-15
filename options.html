@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <title>Parrot 設定</title>
+  <style>
+    body { font: 15px/1.7 -apple-system, "Noto Sans TC", sans-serif; max-width: 560px; margin: 40px auto; padding: 0 20px; color: #222; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 16px; margin-top: 36px; }
+    input { width: 100%; padding: 9px 11px; font: inherit; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+    label { display: block; margin-top: 10px; }
+    button { margin-top: 12px; padding: 9px 18px; font: inherit; border: none; border-radius: 8px; background: #1b1b1d; color: #fff; cursor: pointer; }
+    button.ghost { background: #eee; color: #333; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .note { margin-top: 20px; padding: 12px 14px; background: #fdf3e0; border-radius: 8px; font-size: 13px; line-height: 1.6; }
+    .ok { color: #2a8; }
+    .err { color: #c33; }
+    #saved, #login-msg { margin-left: 10px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Parrot 設定</h1>
+
+  <h2>查字（Claude）</h2>
+  <p>填入 Anthropic API key，就能拿到中文意思、KK 音標、句中語感和例句。留空的話只會有基本翻譯和 IPA 音標。</p>
+  <label>Anthropic API key</label>
+  <input id="key" type="password" placeholder="sk-ant-...">
+  <button id="save">儲存</button><span id="saved"></span>
+
+  <h2>學習記錄（Language Quest）</h2>
+  <p>用 vocab-app 的帳號登入。之後每完成一輪循環會自動記 XP，累積進等級、連續天數和成就。<b>生詞本不需要登入</b>，本來就能用。</p>
+  <div id="login-form">
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="username">
+    <label>密碼</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <button id="login">登入</button><span id="login-msg"></span>
+  </div>
+  <div id="login-done" hidden>
+    <p>已登入：<b id="login-email"></b><span id="pending-note"></span></p>
+    <button id="logout" class="ghost">登出</button>
+  </div>
+
+  <h2>每日開口（ChatGPT）</h2>
+  <p>每天第一次 focus Chrome 會跳通知推你去 ChatGPT。只計 ChatGPT 分頁在前景的時間，達標 streak +1，並記進 Language Quest。</p>
+  <label>練習時長（1–60 分鐘）</label>
+  <input id="practice-mins" type="number" min="1" max="60">
+  <label>每日提醒時間（還沒完成才提醒）</label>
+  <input id="reminder-time" type="time">
+  <label>開場 Prompt（開啟 ChatGPT 時自動帶入對話框）</label>
+  <textarea id="gate-prompt" rows="3" style="width:100%;padding:9px 11px;font:inherit;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;"></textarea>
+  <label><input id="topics-toggle" type="checkbox" style="width:auto"> 每日主題輪換（prompt 末尾自動附一個主題）</label>
+  <label><input id="freeze-toggle" type="checkbox" style="width:auto"> Streak 凍結（每週可跳過一天不斷 streak）</label>
+  <span id="gate-saved" class="ok" style="font-size:13px"></span>
+
+  <div class="note">
+    ⚠️ API key 和登入 token 都存在 <code>chrome.storage.local</code>，只在你自己的瀏覽器裡。<b>不要把這個資料夾連 key 一起分享或上傳。</b>
+    查一個字大約用掉 300～500 tokens，用 Haiku 幾乎不花錢。
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

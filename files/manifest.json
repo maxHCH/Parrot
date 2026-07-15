@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube AB Loop (聽力練習)",
+  "version": "3.0.0",
+  "description": "手動開啟的 YouTube A/B 區段循環 + 字幕自動切句，適合聽力與跟讀練習。",
+  "permissions": ["storage"],
+  "host_permissions": ["https://www.youtube.com/*"],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_title": "AB Loop：開啟 / 關閉這支影片的練習面板",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+L" },
+      "description": "開啟 / 關閉 AB Loop 面板"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["page.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

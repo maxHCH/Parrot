@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "Parrot（循環跟讀＋選字查詢＋每日開口）",
+  "version": "1.1.0",
+  "description": "YouTube A/B 區段循環 + 字幕自動切句；選取任何英文 → 中文意思、音標、朗讀、加入生詞本；每天第一次開 Chrome 推你去 ChatGPT 開口練習。",
+  "permissions": ["storage", "tabs", "alarms", "notifications"],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://api.anthropic.com/*",
+    "https://api.dictionaryapi.dev/*",
+    "https://translate.googleapis.com/*",
+    "https://xrifxsnodrluzqokfpqq.supabase.co/*"
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Parrot：YouTube 頁開練習面板（Alt+L）／其他頁看今日開口進度",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+L" },
+      "description": "開啟 / 關閉練習面板（YouTube 播放頁）"
+    }
+  },
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["page.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["loop.js"],
+      "css": ["loop.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lookup.js"],
+      "css": ["lookup.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "incognito": "spanning"
+}

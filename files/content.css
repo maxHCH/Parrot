@@ -1,0 +1,278 @@
+#ytab-panel {
+  --ytab-fg: var(--yt-spec-text-primary, #f1f1f1);
+  --ytab-dim: var(--yt-spec-text-secondary, #aaa);
+  --ytab-surface: var(--yt-spec-badge-chip-background, rgba(255, 255, 255, 0.08));
+  --ytab-line: rgba(255, 255, 255, 0.16);
+  --ytab-accent: #3ea6ff;
+
+  margin: 12px 0 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--ytab-line);
+  border-radius: 12px;
+  background: var(--ytab-surface);
+  color: var(--ytab-fg);
+  font-family: "Roboto", "Noto Sans TC", Arial, sans-serif;
+  font-size: 13px;
+}
+
+#ytab-panel.ytab-float {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  background: #212121;
+  max-width: 620px;
+}
+
+#ytab-panel .ytab-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#ytab-panel .ytab-brand {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: var(--ytab-dim);
+  flex: 0 0 auto;
+}
+
+/* signature: 迷你時間軸，直接看到 A–B 區間在整支影片的哪裡 */
+#ytab-panel .ytab-bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+#ytab-panel .ytab-range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--ytab-accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+#ytab-panel .ytab-head-dot {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 8px;
+  background: #fff;
+}
+
+#ytab-panel .ytab-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#ytab-panel .ytab-row2 {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ytab-line);
+}
+
+#ytab-panel button {
+  font: inherit;
+  color: var(--ytab-fg);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+#ytab-panel button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#ytab-panel button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#ytab-panel button:focus-visible {
+  outline: 2px solid var(--ytab-accent);
+  outline-offset: 2px;
+}
+
+#ytab-panel .ytab-mark {
+  font-weight: 600;
+}
+
+#ytab-panel .ytab-nudge {
+  padding: 5px 8px;
+  min-width: 28px;
+  line-height: 1;
+}
+
+#ytab-panel .ytab-loop.is-on {
+  background: var(--ytab-accent);
+  color: #0f0f0f;
+  font-weight: 600;
+}
+
+#ytab-panel .ytab-ghost {
+  background: transparent;
+  border-color: var(--ytab-line);
+  color: var(--ytab-dim);
+}
+
+#ytab-panel .ytab-chip {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+#ytab-panel .ytab-chip.is-on {
+  background: var(--ytab-accent);
+  color: #0f0f0f;
+  font-weight: 600;
+}
+
+#ytab-panel .ytab-time {
+  font-family: "Roboto Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  min-width: 66px;
+  text-align: center;
+  color: var(--ytab-fg);
+}
+
+#ytab-panel .ytab-label {
+  color: var(--ytab-dim);
+  font-size: 12px;
+}
+
+#ytab-panel .ytab-input {
+  width: 60px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--ytab-line);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--ytab-fg);
+  font: inherit;
+}
+
+#ytab-panel .ytab-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: var(--ytab-line);
+}
+
+#ytab-panel .ytab-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ytab-dim);
+}
+
+@media (max-width: 700px) {
+  #ytab-panel .ytab-hint { display: none; }
+}
+
+/* ---------- 字幕切句 ---------- */
+#ytab-panel .ytab-cap {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ytab-line);
+}
+
+#ytab-panel .ytab-select {
+  font: inherit;
+  color: var(--ytab-fg);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--ytab-line);
+  border-radius: 6px;
+  padding: 4px 6px;
+  max-width: 200px;
+}
+
+#ytab-panel .ytab-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ytab-dim);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#ytab-panel .ytab-status {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ytab-dim);
+  max-width: 320px;
+  text-align: right;
+}
+
+#ytab-panel .ytab-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+#ytab-panel .ytab-list:empty { display: none; }
+
+#ytab-panel .ytab-item {
+  display: grid;
+  grid-template-columns: 34px 58px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+#ytab-panel .ytab-item:hover { background: rgba(255, 255, 255, 0.08); }
+
+#ytab-panel .ytab-item.is-on {
+  background: rgba(62, 166, 255, 0.16);
+  box-shadow: inset 2px 0 0 var(--ytab-accent);
+}
+
+#ytab-panel .ytab-idx,
+#ytab-panel .ytab-t {
+  font-family: "Roboto Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--ytab-dim);
+}
+
+#ytab-panel .ytab-text { color: var(--ytab-fg); }
+
+/* 先聽再看：文字先糊掉，滑過去才顯示 */
+#ytab-panel .ytab-list.is-hidden .ytab-text {
+  filter: blur(5px);
+  transition: filter 0.12s;
+}
+#ytab-panel .ytab-list.is-hidden .ytab-item:hover .ytab-text { filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  #ytab-panel * { transition: none !important; }
+}
+
+/* 面板右上角的關閉鈕 */
+#ytab-panel .ytab-close {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ytab-dim);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#ytab-panel .ytab-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ytab-fg);
+}

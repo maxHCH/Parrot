@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <title>Parrot — 每日開口</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <h1>Parrot 每日開口</h1>
+      <button id="settings-btn" title="設定">⚙</button>
+    </div>
+
+    <div id="timer-section">
+      <svg class="timer-ring" viewBox="0 0 120 120">
+        <circle class="ring-bg" cx="60" cy="60" r="52"/>
+        <circle id="ring-fg" class="ring-fg" cx="60" cy="60" r="52"/>
+      </svg>
+      <div id="time-display">--:--</div>
+    </div>
+    <div id="target-label"></div>
+
+    <div id="status-text"></div>
+
+    <div id="stats">
+      <div class="stat">
+        <div class="stat-value" id="streak-val">—</div>
+        <div class="stat-label">連續天數</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat">
+        <div class="stat-value" id="weekly-val">—</div>
+        <div class="stat-label">本週完成</div>
+      </div>
+    </div>
+
+    <div id="calendar"></div>
+    <div id="freeze-indicator" class="hidden"></div>
+
+    <button id="start-btn" class="hidden"></button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
