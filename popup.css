@@ -236,3 +236,5 @@ h1 {
   background: linear-gradient(90deg, #17b877, #facc15);
   transition: width 0.4s ease;
 }
+#quest-wrap.clickable { cursor: pointer; }
+#quest-wrap.clickable:hover #quest-label { color: #e8eaf0; }

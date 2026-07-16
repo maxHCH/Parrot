@@ -4,17 +4,12 @@
   const MAX_LEN = 300;
   let pop = null;
   let lastText = "";
-  let audio = null;
 
   // ---------- 朗讀 ----------
-  function speak(text, url) {
+  // 一律用瀏覽器 TTS：單字、重播、例句都同一個聲音，
+  // 不用字典的真人發音 mp3（跟 TTS 音調不一致，聽起來像兩個人）。
+  function speak(text) {
     stopSpeak();
-    if (url) {
-      audio = new Audio(url);           // 字典的真人發音優先
-      audio.playbackRate = 0.9;
-      audio.play().catch(() => speakTTS(text));
-      return;
-    }
     speakTTS(text);
   }
 
@@ -32,7 +27,6 @@
 
   function stopSpeak() {
     speechSynthesis.cancel();
-    if (audio) { audio.pause(); audio = null; }
   }
 
   speechSynthesis.getVoices(); // 觸發語音清單載入
@@ -81,9 +75,9 @@
     }
 
     pop.querySelector(".wl-x").onclick = close;
-    pop.querySelector(".wl-speak").onclick = () => speak(text, pop.dataset.audio || null);
+    pop.querySelector(".wl-speak").onclick = () => speak(text);
 
-    speak(text, null); // 先用 TTS 唸一次，字典音檔回來後按鈕會改用真人發音
+    speak(text); // 開卡先唸一次
 
     try {
       chrome.runtime.sendMessage({ type: "lookup", text, context }, (res) => {
@@ -111,8 +105,6 @@
 
   function render(res, context) {
     const { dict, ai, fallbackZh, hasKey } = res;
-    if (dict?.audio) pop.dataset.audio = dict.audio;
-
     const rows = [];
 
     // 音標
@@ -172,7 +164,7 @@
     fill(rows.join(""));
 
     const exBtn = pop.querySelector(".wl-ex-speak");
-    if (exBtn) exBtn.onclick = () => speak(ai.example, null);
+    if (exBtn) exBtn.onclick = () => speak(ai.example);
 
     const saveBtn = pop.querySelector(".wl-save");
     if (saveBtn)
@@ -202,6 +194,15 @@
             } else {
               saveBtn.textContent = "✓ 已加入生詞本";
               saveBtn.classList.add("wl-saved");
+              if (nestUrl) {
+                const go = document.createElement("a");
+                go.className = "wl-nest";
+                go.textContent = "去複習 →";
+                go.href = `${nestUrl}/review`;
+                go.target = "_blank";
+                go.rel = "noopener";
+                saveBtn.after(go);
+              }
             }
           }
         );
@@ -215,10 +216,15 @@
   // 預設只在練習模式（AB LOOP 面板開著）才啟用選字查詢，
   // 免得平常瀏覽的雙擊也彈卡。options 可開「全站查詢」。
   let everywhere = false;
+  let nestUrl = "";
   try {
-    chrome.storage.local.get("lookupEverywhere", (v) => (everywhere = !!v?.lookupEverywhere));
+    chrome.storage.local.get(["lookupEverywhere", "nestUrl"], (v) => {
+      everywhere = !!v?.lookupEverywhere;
+      nestUrl = v?.nestUrl || "";
+    });
     chrome.storage.onChanged.addListener((ch) => {
       if (ch.lookupEverywhere) everywhere = !!ch.lookupEverywhere.newValue;
+      if (ch.nestUrl) nestUrl = ch.nestUrl.newValue || "";
     });
   } catch (_) {}
 

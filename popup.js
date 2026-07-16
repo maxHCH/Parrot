@@ -151,7 +151,16 @@ chrome.runtime.sendMessage({ type: "quest-today" }, (res) => {
   document.getElementById("quest-xp").textContent = res.xp;
   document.getElementById("quest-fill").style.width =
     `${Math.min(100, (res.xp / GOAL) * 100)}%`;
-  document.getElementById("quest-wrap").classList.remove("hidden");
+  const wrap = document.getElementById("quest-wrap");
+  wrap.classList.remove("hidden");
+
+  // 填了 Parrot Nest 網址 → 點進 /stats dashboard
+  chrome.storage.local.get("nestUrl", ({ nestUrl }) => {
+    if (!nestUrl) return;
+    wrap.classList.add("clickable");
+    wrap.title = "看完整進度（Parrot Nest）";
+    wrap.addEventListener("click", () => chrome.tabs.create({ url: `${nestUrl}/stats` }));
+  });
 });
 
 startBtn.addEventListener("click", () => {

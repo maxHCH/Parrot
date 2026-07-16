@@ -59,6 +59,19 @@ document.getElementById("logout").onclick = () => {
 
 renderStatus();
 
+// ---- Parrot Nest 網址（互連連結的基底）----
+const nestInput = document.getElementById("nest-url");
+const nestSaved = document.getElementById("nest-saved");
+chrome.storage.local.get("nestUrl", (v) => (nestInput.value = v.nestUrl || ""));
+nestInput.onchange = () => {
+  const url = nestInput.value.trim().replace(/\/+$/, ""); // 去掉尾斜線
+  nestInput.value = url;
+  chrome.storage.local.set({ nestUrl: url }, () => {
+    nestSaved.textContent = "已儲存 ✓";
+    setTimeout(() => (nestSaved.textContent = ""), 1800);
+  });
+};
+
 // ---- 每日開口（gate）設定：直接讀寫 storage，background 監聽變更自動生效 ----
 const GATE_DEFAULT_PROMPT =
   "Let's have a 10-minute English conversation practice. " +

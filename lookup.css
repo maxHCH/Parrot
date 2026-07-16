@@ -119,3 +119,12 @@
   font-size: 11px;
   line-height: 1.5;
 }
+
+#wl-pop .wl-nest {
+  display: inline-block;
+  margin: 8px 0 0 10px;
+  font-size: 13px;
+  color: #6fd89a;
+  text-decoration: none;
+}
+#wl-pop .wl-nest:hover { text-decoration: underline; }
