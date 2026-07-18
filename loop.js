@@ -23,6 +23,14 @@
   let tracks = [];
   let pickedTrack = null;
 
+  // 練習完成度：跟讀過的句子打勾，存 done:{videoId}。
+  // key 用句子起始時間（×10 取整）而不是 index——換字幕軌或切句參數
+  // 變了 index 會全部位移，時間點不會。
+  let doneSet = new Set();
+  let lastDoneKey = null;
+  let doneCelebrated = false;
+  const sKey = (s) => Math.round(s.start * 10);
+
   // ---------- utils ----------
   const fmt = (t) => {
     if (t === null || t === undefined || Number.isNaN(t)) return "--:--.-";
@@ -85,8 +93,51 @@
         durationSec: state.b - state.a,
       });
     } catch (_) {}
+    if (curIdx >= 0) markDone(curIdx); // 手動 A/B（沒選句）不算完成度
     if (questOn) showXpToast("+5 🍪");
   };
+
+  // ---------- 練習完成度 ----------
+  function markDone(i) {
+    const s = sentences[i];
+    if (!s) return;
+    const k = sKey(s);
+    const isNew = !doneSet.has(k);
+    doneSet.add(k);
+    lastDoneKey = k;
+    set(`done:${videoId}`, { keys: [...doneSet], last: k });
+    if (!isNew) return;
+    panel?.querySelector(`.ytab-item[data-i="${i}"]`)?.classList.add("is-done");
+    // 只在「練了新句子」的當下慶祝——重開已練完的影片不算
+    if (renderDoneCount() && !doneCelebrated) {
+      doneCelebrated = true;
+      showXpToast("整支練完 🎉");
+    }
+  }
+
+  function renderDoneCount() {
+    const el = panel?.querySelector(".ytab-progress");
+    if (!el || !sentences.length) {
+      if (el) el.textContent = "";
+      return false;
+    }
+    const n = sentences.filter((s) => doneSet.has(sKey(s))).length;
+    el.textContent = `跟讀 ${n}/${sentences.length}`;
+    const complete = n === sentences.length;
+    el.classList.toggle("is-complete", complete);
+    return complete;
+  }
+
+  // 載入字幕後捲到上次練到的句子，接著練
+  function resumeScroll() {
+    if (lastDoneKey == null || state.looping) return;
+    const i = sentences.findIndex((s) => sKey(s) === lastDoneKey);
+    if (i < 0) return;
+    const el = panel.querySelector(`.ytab-item[data-i="${i}"]`);
+    el?.scrollIntoView({ block: "center" });
+    el?.classList.add("is-resume");
+    setTimeout(() => el?.classList.remove("is-resume"), 2000);
+  }
 
   // ---------- Language Quest 回饋 ----------
   // 有登入才顯示 XP toast，不然數字是假的
@@ -94,7 +145,41 @@
   chrome.storage.local.get("sbSession", (v) => (questOn = !!v.sbSession));
   chrome.storage.onChanged.addListener((ch) => {
     if (ch.sbSession) questOn = !!ch.sbSession.newValue;
+    if (ch.vocabCache?.newValue) {
+      // 存了新字或 SRS 狀態變了 → 開著的面板立刻重標色
+      vocabWords = ch.vocabCache.newValue.words || {};
+      rebuildVocabRe();
+      if (panel && sentences.length) { renderList(); highlight(); }
+    }
   });
+
+  // ---------- 生詞高亮 ----------
+  // 生詞本的字在句子清單標色：🟠 新字、🟡 複習中、🟢 已掌握。
+  // 同一類影片看久了，字幕會從橘慢慢變綠——進步看得見。
+  let vocabWords = {}; // { word: "new" | "learn" | "master" }
+  let vocabRe = null;
+
+  function rebuildVocabRe() {
+    const keys = Object.keys(vocabWords);
+    if (!keys.length) return (vocabRe = null);
+    const parts = keys
+      .sort((a, b) => b.length - a.length) // 片語要排在單字前面才搶得到
+      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    // 不能用 \b：生詞本有「ref()」這種符號結尾的詞，\b 貼著符號會失效
+    vocabRe = new RegExp(`(?<![\\w-])(${parts.join("|")})(?![\\w-])`, "gi");
+  }
+
+  function loadVocab() {
+    if (!alive()) return;
+    try {
+      chrome.runtime.sendMessage({ type: "vocab-list" }, (words) => {
+        if (chrome.runtime.lastError || !words) return;
+        vocabWords = words;
+        rebuildVocabRe();
+        if (panel && sentences.length) { renderList(); highlight(); }
+      });
+    } catch (_) {}
+  }
 
   function showXpToast(text) {
     if (!panel) return; // 掛在面板內；面板沒開就不顯示
@@ -336,6 +421,8 @@
         <button class="ytab-btn" data-act="prev">← 上一句</button>
         <button class="ytab-btn" data-act="next">下一句 →</button>
         <label class="ytab-check"><input type="checkbox" data-act="hide"> 先聽再看</label>
+        <span class="ytab-progress"></span>
+        <span class="ytab-vblegend"></span>
         <span class="ytab-status"></span>
       </div>
       <ol class="ytab-list"></ol>
@@ -371,8 +458,13 @@
       state.delay = saved.delay ?? 0;
     }
 
+    const done = await get(`done:${videoId}`);
+    doneSet = new Set(done?.keys || []);
+    lastDoneKey = done?.last ?? null;
+
     mountPanel();
     render();
+    loadVocab(); // 高亮用的生詞清單（快取過期會順便刷新）
     status("讀取字幕軌…");
     setTimeout(() => toPage("list-tracks"), 300);
     reportState();
@@ -513,15 +605,35 @@
   }
 
   function renderList() {
+    const counts = { new: 0, learn: 0, master: 0 };
+    const mark = (t) => {
+      const escaped = t.replace(/</g, "&lt;");
+      if (!vocabRe) return escaped;
+      return escaped.replace(vocabRe, (m) => {
+        const st = vocabWords[m.toLowerCase()] || "new";
+        counts[st]++;
+        return `<span class="ytab-vb ytab-vb-${st}">${m}</span>`;
+      });
+    };
     panel.querySelector(".ytab-list").innerHTML = sentences
       .map(
-        (s, i) => `<li class="ytab-item" data-i="${i}">
+        (s, i) => `<li class="ytab-item${doneSet.has(sKey(s)) ? " is-done" : ""}" data-i="${i}">
           <span class="ytab-idx">${String(i + 1).padStart(3, "0")}</span>
           <span class="ytab-t">${fmt(s.start)}</span>
-          <span class="ytab-text">${s.text.replace(/</g, "&lt;")}</span>
+          <span class="ytab-text">${mark(s.text)}</span>
         </li>`
       )
       .join("");
+    renderDoneCount();
+
+    const legend = panel.querySelector(".ytab-vblegend");
+    if (legend) {
+      const total = counts.new + counts.learn + counts.master;
+      legend.textContent = total
+        ? `生詞 🟠${counts.new} 🟡${counts.learn} 🟢${counts.master}`
+        : "";
+      legend.title = "字幕裡的生詞本單字：🟠 新字・🟡 複習中・🟢 已掌握（間隔 ≥ 21 天）";
+    }
   }
 
   // ---------- 字幕流程 ----------
@@ -573,6 +685,7 @@
       curIdx = -1;
       renderList();
       status(`切出 ${sentences.length} 句${isAsr ? "（自動字幕，依停頓斷句）" : ""}`);
+      resumeScroll(); // 捲到上次練到的句子
     }
   });
 
@@ -626,6 +739,7 @@
     video = v;
     state = { a: null, b: null, looping: false, delay: 0 };
     sentences = []; tracks = []; curIdx = -1; pickedTrack = null;
+    doneSet = new Set(); lastDoneKey = null; doneCelebrated = false;
     reportState();
 
     if (await get(`on:${id}`)) enable();   // 這支影片以前開過 → 自動展開

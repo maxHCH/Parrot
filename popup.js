@@ -144,7 +144,7 @@ async function refresh() {
 setInterval(refresh, 1000);
 refresh();
 
-// ---- 今日 XP（Language Quest，登入才顯示）----
+// ---- Language Quest 記分板（登入才顯示）----
 chrome.runtime.sendMessage({ type: "quest-today" }, (res) => {
   if (chrome.runtime.lastError || !res?.loggedIn || res.xp == null) return;
   const GOAL = 60; // 熱力圖的中間門檻
@@ -153,6 +153,26 @@ chrome.runtime.sendMessage({ type: "quest-today" }, (res) => {
     `${Math.min(100, (res.xp / GOAL) * 100)}%`;
   const wrap = document.getElementById("quest-wrap");
   wrap.classList.remove("hidden");
+
+  // LV + 升級進度 + 統計列（my_stats）
+  const s = res.stats;
+  if (s) {
+    document.getElementById("quest-lv").textContent = `LV ${s.level}`;
+    const span = s.xpInto + s.xpToNext; // 這一級的總跨度
+    document.getElementById("lv-fill").style.width =
+      `${Math.min(100, span ? (s.xpInto / span) * 100 : 0)}%`;
+    document.getElementById("lv-next").textContent = `還差 ${s.xpToNext} 🍪`;
+    document.getElementById("quest-level-row").classList.remove("hidden");
+
+    const meta = [`🔥 ${s.streak} 天`];
+    if (res.vocabCount != null) meta.push(`📚 生詞 ${res.vocabCount}`);
+    meta.push(`⏱ ${s.minutes} 分`);
+    const metaEl = document.getElementById("quest-meta");
+    metaEl.textContent = meta.join("・");
+    metaEl.title =
+      `🔥 任一練習有 XP 就算的連續天數（最長 ${s.longest} 天）・跟上面的開口 streak 分開算`;
+    metaEl.classList.remove("hidden");
+  }
 
   // 填了 Parrot Nest 網址 → 點進 /stats dashboard
   chrome.storage.local.get("nestUrl", ({ nestUrl }) => {

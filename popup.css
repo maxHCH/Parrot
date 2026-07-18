@@ -215,8 +215,48 @@ h1 {
 #start-btn:active { background: #1d4ed8; }
 #start-btn.hidden { display: none; }
 
-/* ── 今日 XP（Language Quest） ── */
+/* ── Language Quest 記分板 ── */
 #quest-wrap { margin-top: 12px; }
+
+#quest-level-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+#quest-lv {
+  font-size: 12px;
+  font-weight: 800;
+  color: #17b877;
+  background: rgba(23, 184, 119, 0.14);
+  border-radius: 6px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+#lv-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+#lv-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: #17b877;
+  transition: width 0.4s ease;
+}
+#lv-next {
+  font-size: 11px;
+  color: #9aa5b1;
+  white-space: nowrap;
+}
+#quest-meta {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #9aa5b1;
+}
 #quest-label {
   font-size: 12px;
   color: #9aa5b1;

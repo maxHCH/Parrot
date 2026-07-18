@@ -85,6 +85,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sbStatus().then(sendResponse);
     return true;
   }
+  if (msg?.type === "vocab-list") {
+    vocabList().then((c) => sendResponse(c.words));
+    return true;
+  }
   if (msg?.type === "ytab-state" && sender.tab?.id) {
     // loop.js 回報面板開關 → 在圖示上顯示 ON
     chrome.action.setBadgeText({ tabId: sender.tab.id, text: msg.on ? "ON" : "" });
@@ -224,9 +228,45 @@ async function saveWord(payload) {
       console.warn("[parrot] save failed:", r.status, detail);
       return { ok: false, error: `${r.status} ${detail}` };
     }
+
+    // 新字直接補進快取（不等 TTL）→ storage.onChanged 讓開著的面板立刻高亮
+    const { vocabCache } = await chrome.storage.local.get("vocabCache");
+    if (vocabCache && !vocabCache.words[payload.word]) {
+      vocabCache.words[payload.word] = "new";
+      await chrome.storage.local.set({ vocabCache });
+    }
     return { ok: true };
   } catch (e) {
     return { ok: false, error: String(e) };
+  }
+}
+
+// ---- 生詞快取（loop.js 的字幕高亮用）----
+// 讀 vocabularies 的 SRS 欄位，映成三種狀態：new（還沒背）、
+// learn（複習中）、master（interval ≥ 21 天）。anon 可讀，不用登入。
+const VOCAB_TTL = 10 * 60 * 1000;
+
+const vocabStatus = (row) =>
+  !row.repetitions ? "new" : (row.interval_days || 0) >= 21 ? "master" : "learn";
+
+async function vocabList() {
+  const { vocabCache } = await chrome.storage.local.get("vocabCache");
+  if (vocabCache && Date.now() - vocabCache.at < VOCAB_TTL) return vocabCache;
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/vocabularies?select=word,repetitions,interval_days&limit=2000`,
+      { headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const words = {};
+    for (const row of await r.json())
+      if (row.word) words[row.word.toLowerCase()] = vocabStatus(row);
+    const cache = { at: Date.now(), words };
+    await chrome.storage.local.set({ vocabCache: cache });
+    return cache;
+  } catch (e) {
+    console.warn("[parrot] vocab list:", e);
+    return vocabCache || { at: 0, words: {} };
   }
 }
 
@@ -300,18 +340,43 @@ async function flushEvents() {
   }
 }
 
-// popup 的今日 XP。local_date 是 Asia/Taipei，不能用 toISOString（UTC）算日期
+// popup 的記分板：今日 XP + my_stats（LV / streak / 總時數）+ 生詞數。
+// local_date 是 Asia/Taipei，不能用 toISOString（UTC）算日期。
 async function questToday() {
   const token = await sbToken();
   if (!token) return { loggedIn: false };
+  const headers = { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` };
   try {
     const d = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
-    const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/v_daily_summary?local_date=eq.${d}&select=xp`,
-      { headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` } }
-    );
-    const rows = r.ok ? await r.json() : [];
-    return { loggedIn: true, xp: rows[0]?.xp || 0 };
+    const [todayRows, statsRows, vocabCount] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/v_daily_summary?local_date=eq.${d}&select=xp`, { headers })
+        .then((r) => (r.ok ? r.json() : [])),
+      sbRpc("my_stats", token).catch(() => null),
+      fetch(`${SUPABASE_URL}/rest/v1/vocabularies?select=id&limit=1`, {
+        headers: { ...headers, prefer: "count=exact" },
+      })
+        .then((r) => {
+          const total = r.headers.get("content-range")?.split("/")[1]; // "0-0/23" → 23
+          return total != null ? parseInt(total, 10) : null;
+        })
+        .catch(() => null),
+    ]);
+    const s = statsRows?.[0];
+    return {
+      loggedIn: true,
+      xp: todayRows[0]?.xp || 0,
+      vocabCount,
+      stats: s
+        ? {
+            level: s.level,
+            xpInto: s.xp_into_level,
+            xpToNext: s.xp_to_next,
+            streak: s.current_streak,
+            longest: s.longest_streak,
+            minutes: s.total_minutes,
+          }
+        : null,
+    };
   } catch (_) {
     return { loggedIn: true, xp: null };
   }

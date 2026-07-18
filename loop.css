@@ -250,12 +250,65 @@
 
 #ytab-panel .ytab-text { color: var(--ytab-fg); }
 
+/* 生詞高亮：底線色 = SRS 狀態（新字 → 複習中 → 已掌握） */
+#ytab-panel .ytab-vb {
+  border-radius: 3px;
+  padding: 0 2px;
+  margin: 0 -1px;
+}
+#ytab-panel .ytab-vb-new {
+  background: rgba(246, 160, 26, 0.22);
+  box-shadow: inset 0 -2px 0 rgba(246, 160, 26, 0.85);
+}
+#ytab-panel .ytab-vb-learn {
+  background: rgba(250, 204, 21, 0.16);
+  box-shadow: inset 0 -2px 0 rgba(250, 204, 21, 0.75);
+}
+#ytab-panel .ytab-vb-master {
+  background: rgba(23, 184, 119, 0.16);
+  box-shadow: inset 0 -2px 0 rgba(23, 184, 119, 0.8);
+}
+
+#ytab-panel .ytab-vblegend {
+  font-size: 11px;
+  color: var(--ytab-dim);
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* 練習完成度：跟讀過的句子打勾，計數在面板列 */
+#ytab-panel .ytab-progress {
+  font-size: 11px;
+  color: var(--ytab-dim);
+  white-space: nowrap;
+  cursor: default;
+}
+#ytab-panel .ytab-progress.is-complete { color: #17b877; font-weight: 600; }
+
+#ytab-panel .ytab-item.is-done .ytab-idx { color: #17b877; }
+#ytab-panel .ytab-item.is-done .ytab-text::after {
+  content: " ✓";
+  color: #17b877;
+}
+
+/* 續練定位：載入字幕後短暫標亮上次練到的句子 */
+#ytab-panel .ytab-item.is-resume {
+  background: rgba(23, 184, 119, 0.18);
+  transition: background 0.6s;
+}
+
 /* 先聽再看：文字先糊掉，滑過去才顯示 */
 #ytab-panel .ytab-list.is-hidden .ytab-text {
   filter: blur(5px);
   transition: filter 0.12s;
 }
 #ytab-panel .ytab-list.is-hidden .ytab-item:hover .ytab-text { filter: none; }
+
+/* 先聽再看時藏住生詞色塊（糊掉的彩色底會洩題），hover 揭曉才一起出現 */
+#ytab-panel .ytab-list.is-hidden .ytab-item:not(:hover) .ytab-vb {
+  background: transparent;
+  box-shadow: none;
+}
 
 @media (prefers-reduced-motion: reduce) {
   #ytab-panel * { transition: none !important; }
