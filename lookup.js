@@ -187,7 +187,10 @@
           },
           (r) => {
             if (!pop) return;
-            if (chrome.runtime.lastError || !r?.ok) {
+            if (r?.needLogin) {
+              // RLS 收緊後生詞本是帳號私有，重試也沒用，先去登入
+              saveBtn.textContent = "先到擴充功能選項頁登入";
+            } else if (chrome.runtime.lastError || !r?.ok) {
               saveBtn.disabled = false;
               saveBtn.textContent = "加入失敗，再試一次";
               console.warn("[word-lookup] save:", r?.error || chrome.runtime.lastError?.message);

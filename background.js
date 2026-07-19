@@ -181,11 +181,13 @@ async function sbStatus() {
 }
 
 // ---- 生詞本：寫進 vocab-app 的 vocabularies 表 ----
-// 該表沒有 unique(word)，用「先查再 PATCH / POST」去重；
-// 新查到的內容覆蓋舊的（只碰內容欄位，不動 due / ease 等 SRS 排程欄位）。
+// 用「先查再 PATCH / POST」去重（unique index 是 lower(word) 的 expression
+// index，PostgREST 的 on_conflict 吃不到）；只碰內容欄位，不動 SRS 排程欄位。
+// migration 002 之後 RLS 只認 auth.uid()，必須登入。
 async function saveWord(payload) {
   try {
-    const token = (await sbToken()) || SUPABASE_KEY; // vocabularies 的 RLS 開放 anon，可不登入
+    const token = await sbToken();
+    if (!token) return { ok: false, needLogin: true, error: "not logged in" };
     const headers = {
       "content-type": "application/json",
       apikey: SUPABASE_KEY,
@@ -243,7 +245,8 @@ async function saveWord(payload) {
 
 // ---- 生詞快取（loop.js 的字幕高亮用）----
 // 讀 vocabularies 的 SRS 欄位，映成三種狀態：new（還沒背）、
-// learn（複習中）、master（interval ≥ 21 天）。anon 可讀，不用登入。
+// learn（複習中）、master（interval ≥ 21 天）。
+// migration 002 之後 vocabularies 是帳號私有（RLS），要登入才讀得到。
 const VOCAB_TTL = 10 * 60 * 1000;
 
 const vocabStatus = (row) =>
@@ -253,9 +256,11 @@ async function vocabList() {
   const { vocabCache } = await chrome.storage.local.get("vocabCache");
   if (vocabCache && Date.now() - vocabCache.at < VOCAB_TTL) return vocabCache;
   try {
+    const token = await sbToken();
+    if (!token) return vocabCache || { at: 0, words: {} }; // 沒登入：不高亮，也不覆寫舊快取
     const r = await fetch(
       `${SUPABASE_URL}/rest/v1/vocabularies?select=word,repetitions,interval_days&limit=2000`,
-      { headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${SUPABASE_KEY}` } }
+      { headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` } }
     );
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const words = {};
