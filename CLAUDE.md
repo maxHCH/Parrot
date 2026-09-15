@@ -49,13 +49,15 @@ manifest 的 `default_popup` 是 popup.html（開口進度）。background 會�
 
 ## 選字查詢（lookup.js）
 
-選取英文 → 浮出小卡。三個資料來源並行：
+選取英文 → 浮出小卡。三個資料來源：
 
 | 來源 | 給什麼 |
 | --- | --- |
 | `api.dictionaryapi.dev` | IPA 音標、真人發音 mp3、英文定義 |
 | Claude API（`claude-haiku-4-5`） | 中文意思、KK 音標、句中語感、例句 |
 | `translate.googleapis.com`（非官方） | 沒 API key 時的備援翻譯 |
+
+**字典和 Claude 是兩條獨立訊息（`lookup` / `lookup-dict`），不互相等。** `dictionaryapi.dev` 常掛（Cloudflare 522），以前用 `Promise.all` 整張卡會被拖到 10 秒；現在 Claude 回來（~2 秒）就先畫，IPA／英文定義晚到再補一次。免費端點都有 `AbortSignal.timeout`。SW console 有 `[lookup] claude Xms` 可看秒數。
 
 **關鍵設計：翻譯會帶上下文。** 把整個句子送給 Claude，所以 `gut check` 裡的 `gut` 會翻成「憑直覺」而不是「腸子」。這是查字典做不到、但練聽力最需要的。
 
