@@ -79,11 +79,26 @@
 
     speak(text); // 開卡先唸一次
 
+    // Claude 和免費字典分兩條查：字典常卡到 timeout（4 秒），先畫 Claude 的，字典晚到再補
+    let res = null;
+    let dict;
+    const paint = () => {
+      if (!pop) return;
+      // 使用者已經按了「加入生詞本」就不要重畫把按鈕狀態洗掉
+      if (pop.querySelector(".wl-save:disabled")) return;
+      render({ ...res, dict }, context);
+    };
     try {
-      chrome.runtime.sendMessage({ type: "lookup", text, context }, (res) => {
+      chrome.runtime.sendMessage({ type: "lookup", text, context }, (r) => {
         if (!pop) return;
-        if (chrome.runtime.lastError || !res) return fill(`<span class="wl-err">查詢失敗</span>`);
-        render(res, context);
+        if (chrome.runtime.lastError || !r) return fill(`<span class="wl-err">查詢失敗</span>`);
+        res = r;
+        paint();
+      });
+      chrome.runtime.sendMessage({ type: "lookup-dict", text }, (d) => {
+        if (chrome.runtime.lastError) return;
+        dict = d || null;
+        if (res) paint();
       });
     } catch (_) {
       // 擴充功能重新載入後的孤兒 script：提示重新整理即可

@@ -57,6 +57,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     lookup(msg.text, msg.context).then(sendResponse);
     return true; // 非同步回覆
   }
+  if (msg?.type === "lookup-dict") {
+    // 免費字典拆開來查：常慢（4 秒 timeout），不能拖住 Claude 那張卡
+    const isWord = !/\s/.test(msg.text) && msg.text.length < 40;
+    (isWord ? dictionary(msg.text).catch(() => null) : Promise.resolve(null)).then(sendResponse);
+    return true;
+  }
   if (msg?.type === "save") {
     saveWord(msg.payload).then(sendResponse);
     return true;
@@ -96,22 +102,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
+// 只跑 Claude（＋沒 key 或出錯時的 gtx 備援）；免費字典走另一條 lookup-dict，不互相等
 async function lookup(text, context) {
   const isWord = !/\s/.test(text) && text.length < 40;
   const { apiKey } = await chrome.storage.local.get("apiKey");
 
-  const [dict, ai] = await Promise.all([
-    isWord ? dictionary(text).catch(() => null) : null,
-    apiKey ? claude(text, context, apiKey).catch((e) => ({ error: String(e) })) : null,
-  ]);
+  const t0 = performance.now();
+  const ai = apiKey
+    ? await claude(text, context, apiKey).catch((e) => ({ error: String(e) }))
+    : null;
 
   // 沒填 API key → 退回免費翻譯
   let fallbackZh = null;
   if (!apiKey || ai?.error) {
     fallbackZh = await gtx(text).catch(() => null);
   }
+  console.log(`[lookup] claude ${Math.round(performance.now() - t0)}ms`, ai?.error || "");
 
-  return { text, isWord, dict, ai, fallbackZh, hasKey: !!apiKey };
+  return { text, isWord, ai, fallbackZh, hasKey: !!apiKey };
 }
 
 // ---- Supabase 登入（learning_events 的 RLS 要 auth.uid()，anon key 過不了）----
@@ -819,9 +827,12 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // ---- 免費字典：IPA 音標 + 真人發音 + 英文定義 ----
+// 免費服務常掛（Cloudflare 522 要卡 20 秒才回），lookup 用 Promise.all 等它會拖住整張卡，
+// 所以超時就放棄——只少 IPA 和真人發音，Claude 那邊照常。
 async function dictionary(word) {
   const r = await fetch(
-    `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`
+    `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`,
+    { signal: AbortSignal.timeout(4000) }
   );
   if (!r.ok) return null;
   const data = await r.json();
@@ -851,6 +862,7 @@ async function claude(text, context, apiKey) {
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true",
     },
+    signal: AbortSignal.timeout(20000),
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 400,
@@ -891,7 +903,7 @@ async function gtx(text) {
   const url =
     "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=" +
     encodeURIComponent(text);
-  const r = await fetch(url);
+  const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
   if (!r.ok) return null;
   const data = await r.json();
   return (data[0] || []).map((x) => x[0]).join("");
